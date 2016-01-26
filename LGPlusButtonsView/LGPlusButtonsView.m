@@ -216,6 +216,7 @@ typedef NS_ENUM(NSUInteger, LGPlusButtonDescriptionsPosition)
             [_descriptionWrapperViewsArray addObject:wrapperView];
 
             LGPlusButtonDescription *description = [LGPlusButtonDescription new];
+            description.tag = i;
             [wrapperView addSubview:description];
 
             [_descriptionsArray addObject:description];
@@ -1252,6 +1253,22 @@ typedef NS_ENUM(NSUInteger, LGPlusButtonDescriptionsPosition)
 
 - (void)tapGesture:(UITapGestureRecognizer *)gestureRecognizer
 {
+    CGPoint location = [gestureRecognizer locationInView:_coverView];
+    NSInteger actionIndex = -1;
+    for (LGPlusButtonDescription *description in _descriptionsArray) {
+        CGRect rect = description.bounds;
+        rect = [_coverView convertRect:rect
+                              fromView:description];
+        if (CGRectContainsPoint(rect, location)) {
+            actionIndex = description.tag;
+            break;
+        }
+    }
+    if (actionIndex >= 0) {
+        [self handleActionWithIndex:actionIndex];
+        return;
+    }
+    
     if (self.isFirstButtonIsPlusButton)
         [self hideButtonsAnimated:YES completionHandler:nil];
     else
@@ -1261,9 +1278,14 @@ typedef NS_ENUM(NSUInteger, LGPlusButtonDescriptionsPosition)
 - (void)buttonAction:(LGPlusButton *)button
 {
     NSUInteger index = button.tag;
+    [self handleActionWithIndex:index];
+}
 
+- (void)handleActionWithIndex:(NSInteger)index
+{
+    LGPlusButton *button = _buttonsArray[index];
     LGPlusButtonDescription *description = _descriptionsArray[index];
-
+    
     if (self.isFirstButtonIsPlusButton && index == 0)
     {
         if (button.isSelected)
@@ -1271,14 +1293,14 @@ typedef NS_ENUM(NSUInteger, LGPlusButtonDescriptionsPosition)
         else
             [self showButtonsAnimated:YES completionHandler:nil];
     }
-
+    
     // -----
-
+    
     if (_actionHandler) _actionHandler(self, button.titleLabel.text, description.text, button.tag);
-
+    
     if (_delegate && [_delegate respondsToSelector:@selector(plusButtonsView:buttonPressedWithTitle:description:index:)])
         [_delegate plusButtonsView:self buttonPressedWithTitle:button.titleLabel.text description:description.text index:button.tag];
-
+    
     NSMutableDictionary *userInfo = [NSMutableDictionary new];
     if (button.titleLabel.text)
         [userInfo setObject:button.titleLabel.text forKey:@"title"];
@@ -1286,7 +1308,7 @@ typedef NS_ENUM(NSUInteger, LGPlusButtonDescriptionsPosition)
         [userInfo setObject:description.text forKey:@"description"];
     if (button.tag != NSNotFound)
         [userInfo setObject:[NSNumber numberWithInteger:button.tag] forKey:@"index"];
-
+    
     [[NSNotificationCenter defaultCenter] postNotificationName:kLGPlusButtonsViewActionNotification object:self userInfo:userInfo];
 }
 
